@@ -1,0 +1,13 @@
+[Unit]
+Description=Monitor WiFi and control ACT LED
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/wifi-led
+Restart=on-success
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

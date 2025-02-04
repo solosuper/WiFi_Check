@@ -1,0 +1,87 @@
+#!/bin/bash
+
+wifi_led() (
+  set -euo pipefail
+
+  local INTERFACE="wlan0"
+
+  log_message() {
+    local level="$1"
+    local message="$2"
+    local timestamp=$(date)
+    local TAG="wifi-led"
+
+    case "$level" in
+        "debug")    local priority="debug" ;;
+        "info")     local priority="info" ;;
+        "notice")   local priority="notice" ;;
+        "warning")  local priority="warning" ;;
+        "error")    local priority="err" ;;
+        "critical") local priority="crit" ;;
+        "alert")    local priority="alert" ;;
+        "emergency")local priority="emerg" ;;
+        *)          local priority="info" ;;
+    esac
+ 
+    logger -p "${priority}" -t "${TAG}" "${timestamp}: ${message}"
+  }
+
+  local ACT="/sys/class/leds/ACT"
+  local PWR="/sys/class/leds/PWR"
+
+  if [ -d "${PWR}" ]; then
+    local LED="${PWR}"
+    [ -d "$ACT" ] && echo none > "${ACT}/trigger"
+  elif [ -d "${ACT}" ]; then
+    local LED="${ACT}"
+  else
+    log_message "error" "Neither PWR nor ACT LED found." >&2
+    exit 1
+  fi
+
+  log_message "info" "periodic wifi-led for ${INTERFACE} (${LED})"
+
+  if [ ! -w "$LED/trigger" ] || [ ! -w "$LED/brightness" ]; then
+    log_message "error" "LED files in '$LED' are not writable." >&2
+    exit 1
+  fi
+
+
+
+  wifi_is_connected() {
+    iwconfig "${INTERFACE}" 2>/dev/null | grep -qP 'ESSID:(?!off\/any)'
+    return $?
+  }
+  
+  turn_led_off() {
+    echo none > "${LED}/trigger"
+  }
+  
+  set_heartbeat() {
+    echo heartbeat > "${LED}/trigger"
+  }
+
+  set_timer() {
+    echo timer > "${LED}/trigger"
+    echo 100  >  "${LED}/delay_on"
+    echo 10000 > "${LED}/delay_off"
+  }
+
+  ###
+
+  if wifi_is_connected; then
+    # you can ping the device to see if it is alive
+    turn_led_off
+  else
+    #log_message "warning" "${INTERFACE} is not connected"
+    # you want a visual hint to see if the device is powered
+    set_heartbeat
+    sleep 0.5
+    turn_led_off
+  fi
+
+  exit 0
+)
+
+wifi_led "$@"
+

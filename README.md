@@ -4,6 +4,8 @@ Purpose:
 Script checks to see if WiFi has a network IP and if not
 restart WiFi
 
+Control the ACT led to indicate status
+
 Uses a lock file which prevents the script from running more
 than one at a time.  If lockfile is old, it removes it
 
@@ -37,12 +39,14 @@ sudo apt purge wifi-monitor
 
 ```bash
 journalctl -t wifi-check
+journalctl -t wifi-led
 ```
 
 ### View logs from the service
 
 ```bas
 journalctl -u wifi-monitor.service -e
+journalctl -u wifi-led.service -e
 ```
 
 

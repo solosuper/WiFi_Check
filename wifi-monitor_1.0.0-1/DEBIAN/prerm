@@ -3,5 +3,8 @@
 systemctl stop wifi-monitor
 systemctl disable wifi-monitor
 
+systemctl stop wifi-led
+systemctl disable wifi-led
+
 exit 0
 

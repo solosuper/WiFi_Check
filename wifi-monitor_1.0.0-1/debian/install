@@ -1,3 +1,5 @@
 etc/systemd/system/wifi-monitor.service
+etc/systemd/system/wifi-led.service
 usr/bin/wifi-check
+usr/bin/wifi-led
 

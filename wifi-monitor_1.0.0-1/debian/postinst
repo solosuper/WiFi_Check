@@ -3,5 +3,8 @@
 systemctl enable wifi-monitor.service
 systemctl start wifi-monitor.service
 
+systemctl enable wifi-led.service
+systemctl start wifi-led.service
+
 exit 0
 
