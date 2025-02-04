@@ -1,49 +1,118 @@
 #!/usr/bin/env bash
 
-# The IP for the server to ping
-SERVER=192.168.100.1
 
-INTERFACE="wlan0"
+wifi_check() (
 
-LOCKFILE="/var/run/$(basename $0).pid"
-TAG="wifi-check"
+  set -euo pipefail
 
-logger -t $TAG "$(date) routine check for $INTERFACE"
+  local SERVER=192.168.100.1
+  local INTERFACE="wlan0"
+  local LOCKFILE="/var/run/wifi-check.pid"
+  local TAG="wifi-check"
 
-### Handle lockfile ###
-if [ -e ${LOCKFILE} ]; then
-  PID=$(<${LOCKFILE})
-  if kill -0 &>1 > /dev/null $PID; then
-    logger -t $TAG "$PID still running"
-    exit 1
-  else
-    rm ${LOCKFILE}
+  log_message() {
+    local level="$1"
+    local message="$2"
+    local timestamp=$(date)
+
+    case "$level" in
+        "debug")    local priority="debug" ;;
+        "info")     local priority="info" ;;
+        "notice")   local priority="notice" ;;
+        "warning")  local priority="warning" ;;
+        "error")    local priority="err" ;;
+        "critical") local priority="crit" ;;
+        "alert")    local priority="alert" ;;
+        "emergency")local priority="emerg" ;;
+        *)          local priority="info" ;;
+    esac
+ 
+    logger -p "${priority}" -t "${TAG}" "${timestamp}: ${message}"
+  }
+
+  log_message "info" "periodic wifi-check for ${INTERFACE}"
+
+  ### Handle lockfile
+  if [ -f ${LOCKFILE} ]; then
+    read -r PID < "${LOCKFILE}"
+    if kill -0 "${PID}" &> /dev/null; then
+      log_message "error" "Another ${TAG} process (${PID}) is still running"
+      exit 1
+    else
+      log_message "debug" "${LOCKFILE} exists. Delete it."
+      rm "${LOCKFILE}"
+    fi
   fi
-fi
 
-echo $$ > ${LOCKFILE}
+  echo "$$" > ${LOCKFILE}
 
-### Check status by ping
-ping -c2 ${SERVER} > /dev/null
-if [ $? != 0 ]; then
-  logger -t $TAG "ping ${SERVER} failed - run ifup on ${INTERFACE}"
-  ifdown --force ${INTERFACE}
-  sleep 5
-  ifup ${INTERFACE}
-fi
+  check_by_ping() {
+    ping -c1 -W2 ${SERVER} > /dev/null 2>&1
+    return $?
+  }
+  
+  check_by_ifconfig() {
+    ifconfig "${INTERFACE}" | grep -q "inet addr:"
+    return $?
+  }
 
-### Check status by ifconfig
-# if ifconfig $wlan | grep -q "inet addr:" ; then
-#     # Network is Okay
-# else
-#   logger -t $TAG "ping ${SERVER} failed - run ifup on ${INTERFACE}"
-#   ifdown --force ${INTERFACE}
-#   sleep 5
-#   ifup ${INTERFACE}
-# fi
+  ### Check status by iwconfig
+  check_by_iwconfig() {
+    iwconfig "${INTERFACE}" 2>/dev/null | grep -qP 'ESSID:(?!off\/any)'
+    return $?
+  }
 
-### Exit
-rm ${LOCKFILE}
-exit 0
+  check_by_ip_link() {
+    ip link show wlan0 | grep -q "state UP"
+    return $?
+  }
 
-# end
+  check_wifi_connection() {
+    local check_methods=("check_by_iwconfig" "check_by_ip_link" "check_by_ifconfig" "check_by_ping")
+    local CHECK_FAILED=1
+    local CHECK_PASSED=0
+    local check_passed=$CHECK_FAILED
+  
+    for check_method in "${check_methods[@]}"; do
+      if ! "${check_method}"; then
+        log_message "debug" "${check_method##check_by_} check failed"
+      else
+        log_message "debug" "${check_method##check_by_} check passed"
+        check_passed=${CHECK_PASSED}
+        break
+      fi
+    done
+  
+    return $check_passed
+  }
+
+  if ! check_wifi_connection; then
+    log_message "warning" "wifi-check "${INTERFACE}" failed, attempt to reconnect."
+    wpa_cli -i "${INTERFACE}" reconnect > /dev/null
+    local wpa_cli_status=$?
+    if [[ $wpa_cli_status -ne 0 ]]; then
+      log_message "error" "wpa_cli reconnect failed (status: $wpa_cli_status)"
+      exit 2
+    fi
+    sleep 5
+    if ! check_wifi_connection; then # Check again after reconnect
+      log_message "warning" "wpa_cli reconnect not enough. Trying ip link ${INTERFACE} down/up."
+      ip link set "${INTERFACE}" down
+      sleep 5
+      ip link set "${INTERFACE}" up
+    fi
+    sleep 5
+    if check_wifi_connection; then
+      log_message "notice" "connection restored"
+    else
+      log_message "error" "reconnection failed"
+      exit 3
+    fi
+  fi
+  
+  rm ${LOCKFILE}
+  exit 0
+)
+
+wifi_check "$@"
+

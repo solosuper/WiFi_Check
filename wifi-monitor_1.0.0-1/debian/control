@@ -1,7 +1,7 @@
 Source: wifi-monitor
 Section: net
 Priority: optional
-Maintainer: Solo Super <your.email@example.com>
+Maintainer: Solo Super <github.com/solosuper>
 Build-Depends: debhelper (>=10)
 Homepage: https://github.com/solosuper/WiFi_Check
 
