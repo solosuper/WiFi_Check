@@ -1,0 +1,7 @@
+#!/bin/sh
+
+systemctl enable wifi-monitor.service
+systemctl start wifi-monitor.service
+
+exit 0
+

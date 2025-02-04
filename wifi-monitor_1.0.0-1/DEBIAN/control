@@ -1,0 +1,10 @@
+Package: wifi-monitor
+Version: 1.0.0
+Architecture: all
+Maintainer: Your Name <your.email@example.com>
+Homepage: https://github.com/solosuper/WiFi_Check
+Description: Wi-Fi connection monitor service
+Section: net
+Priority: optional
+Depends: iputils-ping
+

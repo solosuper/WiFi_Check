@@ -1,0 +1,11 @@
+Source: wifi-monitor
+Section: net
+Priority: optional
+Maintainer: Solo Super <your.email@example.com>
+Build-Depends: debhelper (>=10)
+Homepage: https://github.com/solosuper/WiFi_Check
+
+Package: wifi-monitor
+Architecture: all
+Description: Wi-Fi connection monitor service
+Depends: iputils-ping

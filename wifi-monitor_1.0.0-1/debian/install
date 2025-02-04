@@ -1,0 +1,3 @@
+etc/systemd/system/wifi-monitor.service
+usr/bin/wifi-check
+
