@@ -38,15 +38,21 @@ sudo apt purge wifi-monitor
 ### View logs from the script
 
 ```bash
-journalctl -t wifi-check
-journalctl -t wifi-led
+journalctl -ft wifi-check
+journalctl -ft wifi-led
 ```
 
-### View logs from the service
+### View logs from the service(s)
 
-```bas
-journalctl -u wifi-monitor.service -e
-journalctl -u wifi-led.service -e
+```bash
+journalctl -efu 'wifi-*'
 ```
 
+
+### Test the script
+... if the service is not running. And make sure to be locked back in. Ideally run in a tmux.
+
+```bash
+sudo ip link set wlan0 down; sleep 10; sudo ./wifi-check; sleep 2; sudo ip link set wlan0 up
+```
 
